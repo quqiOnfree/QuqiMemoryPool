@@ -18,7 +18,7 @@ namespace qmem
 
 		}
 		BaseMemoryPool(const BaseMemoryPool&) = delete;
-		BaseMemoryPool(BaseMemoryPool&& bmp)
+		BaseMemoryPool(BaseMemoryPool&& bmp) noexcept
 		{
 			p_blockSize = bmp.p_blockSize;
 			p_startElementNode = bmp.p_startElementNode;
@@ -87,7 +87,7 @@ namespace qmem
 		}
 
 		BaseMemoryPool& operator=(const BaseMemoryPool&) = delete;
-		BaseMemoryPool& operator=(BaseMemoryPool&& bmp)
+		BaseMemoryPool& operator=(BaseMemoryPool&& bmp) noexcept
 		{
 			if (this != &bmp)
 			{
