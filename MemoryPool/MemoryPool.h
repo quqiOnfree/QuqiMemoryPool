@@ -237,7 +237,12 @@ namespace qmem
 	class SingleDataTypeMemoryPool
 	{
 	public:
-		SingleDataTypeMemoryPool(size_t dataTypeCount = 2048)
+		SingleDataTypeMemoryPool()
+			:SingleDataTypeMemoryPool(2048)
+		{
+
+		}
+		SingleDataTypeMemoryPool(size_t dataTypeCount)
 			:p_blockSize(sizeof(T) * dataTypeCount), p_dataTypeCount(dataTypeCount)
 		{
 		}
