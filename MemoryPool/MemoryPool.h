@@ -35,6 +35,7 @@ namespace qmem
 			}
 		}
 
+		//允许申请数组
 		template<typename T>
 		T* allocate(size_t length = 1)
 		{
@@ -140,7 +141,7 @@ namespace qmem
 						{
 							p_freePointerNode = indexPointerNode->next;
 							indexPointerNode->next = nullptr;
-							return indexPointerNode->valuePointer;
+							return reinterpret_cast<void*>(indexPointerNode);
 						}
 						else if (indexPointerNode->localBlockSize > size)
 						{
@@ -166,7 +167,7 @@ namespace qmem
 							newPointerNode->next = p_freePointerNode->next;
 							p_freePointerNode = newPointerNode;
 							indexPointerNode->next = nullptr;
-							return indexPointerNode->valuePointer;
+							return reinterpret_cast<void*>(indexPointerNode);
 						}
 						indexPointerNode = indexPointerNode->next;
 					}
@@ -181,7 +182,7 @@ namespace qmem
 					nextPointerNode->localBlockSize = indexPointerNode->localBlockSize - size;
 					indexPointerNode->localBlockSize = size;
 					nextPointerNode->valuePointer = reinterpret_cast<char*>(indexPointerNode->valuePointer) + size;
-					return indexPointerNode->valuePointer;
+					return reinterpret_cast<void*>(indexPointerNode);
 				}
 				else
 				{
@@ -191,17 +192,7 @@ namespace qmem
 
 			int postBack(void* back)
 			{
-				PointerNode* indexPointerNode = p_startPointerNode;
-				while (indexPointerNode != nullptr && indexPointerNode < p_indexPointerNode)
-				{
-					if (indexPointerNode->valuePointer == back)
-					{
-						break;
-					}
-					indexPointerNode++;
-				}
-				if (indexPointerNode == p_indexPointerNode || indexPointerNode == nullptr)
-					return -1;
+				PointerNode* indexPointerNode = reinterpret_cast<PointerNode*>(back);
 
 				if (p_freePointerNode == nullptr)
 				{
@@ -220,8 +211,8 @@ namespace qmem
 		protected:
 			struct PointerNode
 			{
-				size_t localBlockSize = 0;
 				void* valuePointer = nullptr;
+				size_t localBlockSize = 0;
 				PointerNode* next = nullptr;
 			};
 		private:
@@ -239,4 +230,113 @@ namespace qmem
 		size_t p_blockSize;
 		ElementNode* p_startElementNode = nullptr;
 	};
+
+	template<typename T>
+	class SingleDataTypeMemoryPool
+	{
+	public:
+		SingleDataTypeMemoryPool(size_t dataTypeCount = 64)
+			:p_blockSize(sizeof(T) * dataTypeCount), p_dataTypeCount(dataTypeCount)
+		{
+		}
+
+		~SingleDataTypeMemoryPool()
+		{
+			while (p_startElementNode != nullptr)
+			{
+				ElementNode* localElementNode = p_startElementNode;
+				delete[] localElementNode->elementPointer;
+				delete[] localElementNode->pointerNodePointer;
+				p_startElementNode = p_startElementNode->next;
+				delete localElementNode;
+			}
+		}
+
+		//不允许申请数组
+		T* allocate()
+		{
+			if (p_freePointerNode != nullptr)
+			{
+				PointerNode* indexPointerNode = p_freePointerNode;
+				p_freePointerNode = p_freePointerNode->next;
+				indexPointerNode->next = nullptr;
+				return reinterpret_cast<T*>(indexPointerNode);
+			}
+
+			if (p_indexPointerNode >= p_endPointerNode)
+			{
+				allocateBlock();
+			}
+
+			PointerNode* indexPointerNode = p_indexPointerNode++;
+			if (p_indexPointerNode + 1 != p_endPointerNode)
+			{
+				p_indexPointerNode->valuePointer = indexPointerNode->valuePointer + 1;
+			}
+			else
+			{
+				indexPointerNode = p_indexPointerNode;
+			}
+			return reinterpret_cast<T*>(indexPointerNode);
+		}
+
+		void deallocate(T* backPointer)
+		{
+			if (p_freePointerNode == nullptr)
+			{
+				p_freePointerNode = reinterpret_cast<PointerNode*>(backPointer);
+			}
+			else
+			{
+				PointerNode* index = reinterpret_cast<PointerNode*>(backPointer);
+				index->next = p_freePointerNode;
+				p_freePointerNode = index;
+			}
+		}
+
+	protected:
+		void allocateBlock()
+		{
+			if (p_startElementNode == nullptr)
+			{
+				p_startElementNode = new ElementNode{ new T[p_dataTypeCount] {0},new PointerNode[p_dataTypeCount],nullptr };
+				p_startPointerNode = p_startElementNode->pointerNodePointer;
+				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
+				p_indexPointerNode = p_startPointerNode;
+				p_endPointerNode = p_startPointerNode + p_dataTypeCount;
+			}
+			else
+			{
+				p_startElementNode = new ElementNode{ new T[p_dataTypeCount] {0},new PointerNode[p_dataTypeCount],p_startElementNode };
+				p_startPointerNode = p_startElementNode->pointerNodePointer;
+				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
+				p_indexPointerNode = p_startPointerNode;
+				p_endPointerNode = p_startPointerNode + p_dataTypeCount;
+			}
+		}
+
+		struct PointerNode;
+
+		struct ElementNode
+		{
+			T* elementPointer = nullptr;
+			PointerNode* pointerNodePointer = nullptr;
+			ElementNode* next = nullptr;
+		};
+		struct PointerNode
+		{
+			T* valuePointer;
+			PointerNode* next = nullptr;
+		};
+	private:
+		size_t p_blockSize, p_dataTypeCount;
+
+		ElementNode* p_startElementNode = nullptr;
+
+		PointerNode* p_startPointerNode = nullptr;
+		PointerNode* p_indexPointerNode = nullptr;
+		PointerNode* p_endPointerNode = nullptr;
+		PointerNode* p_freePointerNode = nullptr;
+	};
+
 }
