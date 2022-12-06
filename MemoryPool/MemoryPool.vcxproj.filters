@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="MemoryPool.cpp">
+    <ClInclude Include="MemoryPool.h">
       <Filter>源文件</Filter>
     </ClInclude>
   </ItemGroup>
