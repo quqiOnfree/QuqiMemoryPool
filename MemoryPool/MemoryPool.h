@@ -92,6 +92,8 @@ namespace qmem
 		{
 			if (this != &bmp)
 			{
+				this->~BaseMemoryPool();
+
 				p_blockSize = bmp.p_blockSize;
 				p_startElementNode = bmp.p_startElementNode;
 				bmp.p_startElementNode = nullptr;
@@ -235,9 +237,28 @@ namespace qmem
 	class SingleDataTypeMemoryPool
 	{
 	public:
-		SingleDataTypeMemoryPool(size_t dataTypeCount = 64)
+		SingleDataTypeMemoryPool(size_t dataTypeCount = 2048)
 			:p_blockSize(sizeof(T) * dataTypeCount), p_dataTypeCount(dataTypeCount)
 		{
+		}
+
+		SingleDataTypeMemoryPool(const SingleDataTypeMemoryPool&) = delete;
+		SingleDataTypeMemoryPool(SingleDataTypeMemoryPool&& sdtm) noexcept
+		{
+			p_blockSize = sdtm.p_blockSize;
+			p_dataTypeCount = sdtm.p_dataTypeCount;
+
+			p_startElementNode = sdtm.p_startElementNode;
+			sdtm.p_startElementNode = nullptr;
+
+			p_startPointerNode = sdtm.p_startPointerNode;
+			sdtm.p_startPointerNode = nullptr;
+			p_indexPointerNode = sdtm.p_indexPointerNode;
+			sdtm.p_indexPointerNode = nullptr;
+			p_endPointerNode = sdtm.p_endPointerNode;
+			sdtm.p_endPointerNode = nullptr;
+			p_freePointerNode = sdtm.p_freePointerNode;
+			sdtm.p_freePointerNode = nullptr;
 		}
 
 		~SingleDataTypeMemoryPool()
@@ -250,6 +271,32 @@ namespace qmem
 				p_startElementNode = p_startElementNode->next;
 				delete localElementNode;
 			}
+		}
+
+		SingleDataTypeMemoryPool& operator=(const SingleDataTypeMemoryPool&) = delete;
+		SingleDataTypeMemoryPool& operator=(SingleDataTypeMemoryPool&& sdtm) noexcept
+		{
+			if (this != &sdtm)
+			{
+				this->~SingleDataTypeMemoryPool();
+
+				p_blockSize = sdtm.p_blockSize;
+				p_dataTypeCount = sdtm.p_dataTypeCount;
+
+				p_startElementNode = sdtm.p_startElementNode;
+				sdtm.p_startElementNode = nullptr;
+
+				p_startPointerNode = sdtm.p_startPointerNode;
+				sdtm.p_startPointerNode = nullptr;
+				p_indexPointerNode = sdtm.p_indexPointerNode;
+				sdtm.p_indexPointerNode = nullptr;
+				p_endPointerNode = sdtm.p_endPointerNode;
+				sdtm.p_endPointerNode = nullptr;
+				p_freePointerNode = sdtm.p_freePointerNode;
+				sdtm.p_freePointerNode = nullptr;
+			}
+			
+			return *this;
 		}
 
 		//不允许申请数组
