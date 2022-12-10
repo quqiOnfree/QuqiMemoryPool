@@ -10,8 +10,27 @@
 
 using namespace std;
 
+struct hi
+{
+	hi() {}
+	vector<int> a;
+	~hi() {}
+};
+
 int main()
 {
+
+	//模板类型为class时 使用格式如下
+	qmem::SingleDataTypeMemoryPool<hi> sd2;
+	//allocate 获取内存
+	//自动调用构造函数
+	hi* qw = sd2.allocate();
+	//手动调用构析函数
+	qw->~hi();
+	//归还内存
+	sd2.deallocate(qw);
+
+
 	size_t times = 100000000;
 	size_t* a;
 
