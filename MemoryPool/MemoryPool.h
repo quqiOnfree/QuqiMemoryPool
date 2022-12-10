@@ -137,7 +137,6 @@ namespace qmem
 			~SingleBlock()
 			{
 				delete[] reinterpret_cast<char*>(p_blockPointer);
-				//delete[] p_startPointerNode;
 			}
 
 			void* get(size_t size)
@@ -145,7 +144,6 @@ namespace qmem
 				if (p_freePointerNode != nullptr)
 				{
 					PointerNode* indexPointerNode = p_freePointerNode;
-					//PointerNode* beforePointerNode = nullptr;
 					while (indexPointerNode != nullptr)
 					{
 						if (indexPointerNode->localBlockSize == size)
@@ -171,7 +169,6 @@ namespace qmem
 							{
 								return nullptr;
 							}
-							//indexPointerNode->next = nullptr;
 							newPointerNode->localBlockSize = indexPointerNode->localBlockSize - size;
 							newPointerNode->valuePointer = reinterpret_cast<char*>(indexPointerNode->valuePointer) + size;
 							indexPointerNode->localBlockSize = size;
@@ -189,7 +186,6 @@ namespace qmem
 				{
 					PointerNode* indexPointerNode = p_indexPointerNode;
 					PointerNode* nextPointerNode = ++p_indexPointerNode;
-					//indexPointerNode->next = nextPointerNode;
 					nextPointerNode->localBlockSize = indexPointerNode->localBlockSize - size;
 					indexPointerNode->localBlockSize = size;
 					nextPointerNode->valuePointer = reinterpret_cast<char*>(indexPointerNode->valuePointer) + size;
@@ -246,6 +242,7 @@ namespace qmem
 	class SingleDataTypeMemoryPool
 	{
 	public:
+
 		SingleDataTypeMemoryPool()
 			:SingleDataTypeMemoryPool(2048)
 		{
@@ -280,12 +277,6 @@ namespace qmem
 			ElementNode* localElementNode = nullptr;
 			while (p_startElementNode != nullptr)
 			{
-				/*ElementNode* localElementNode = p_startElementNode;
-				delete[] localElementNode->elementPointer;
-				delete[] localElementNode->pointerNodePointer;
-				p_startElementNode = p_startElementNode->next;
-				delete localElementNode;*/
-
 				localElementNode = p_startElementNode;
 				p_startElementNode = p_startElementNode->next;
 				delete reinterpret_cast<char*>(localElementNode);
@@ -350,16 +341,10 @@ namespace qmem
 
 		void deallocate(T* backPointer)
 		{
-			if (p_freePointerNode == nullptr)
-			{
-				p_freePointerNode = reinterpret_cast<PointerNode*>(backPointer);
-			}
-			else
-			{
-				PointerNode* index = reinterpret_cast<PointerNode*>(backPointer);
-				index->next = p_freePointerNode;
-				p_freePointerNode = index;
-			}
+			if (backPointer == nullptr) return;
+			PointerNode* index = reinterpret_cast<PointerNode*>(backPointer);
+			index->next = p_freePointerNode;
+			p_freePointerNode = index;
 		}
 
 	protected:
@@ -367,8 +352,6 @@ namespace qmem
 		{
 			if (p_startElementNode == nullptr)
 			{
-
-				//p_startElementNode = new ElementNode{ new T[p_dataTypeCount] {0},new PointerNode[p_dataTypeCount],nullptr };
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
 				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
@@ -381,7 +364,6 @@ namespace qmem
 			}
 			else
 			{
-				//p_startElementNode = new ElementNode{ new T[p_dataTypeCount] {0},new PointerNode[p_dataTypeCount],p_startElementNode };
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
 				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));

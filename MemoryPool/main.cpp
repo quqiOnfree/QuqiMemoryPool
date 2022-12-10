@@ -19,7 +19,6 @@ struct hi
 
 int main()
 {
-
 	//模板类型为class时 使用格式如下
 	qmem::SingleDataTypeMemoryPool<hi> sd2;
 	//allocate 获取内存
