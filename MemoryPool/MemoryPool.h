@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include <cstring>
+#include <type_traits>
+#include <typeinfo>
 
 namespace qmem
 {
@@ -65,10 +67,17 @@ namespace qmem
 				indexElementNode = indexElementNode->next;
 			}
 			beforeElementNode->next = new ElementNode{ 1,new SingleBlock(p_blockSize),nullptr,nullptr };
-			return reinterpret_cast<T*>(beforeElementNode->next->sB->get(requestSize));
+
+			T* getValue = reinterpret_cast<T*>(beforeElementNode->next->sB->get(requestSize));
+			if (std::is_class<T>::value)
+			{
+				return new(getValue) T;
+			}
+			return getValue;
 		}
 
-		void deallocate(void* pointer)
+		template<typename T>
+		void deallocate(T* pointer)
 		{
 			ElementNode* indexElementNode = p_startElementNode;
 			ElementNode* beforeElementNode = nullptr;
@@ -330,7 +339,13 @@ namespace qmem
 			{
 				p_indexPointerNode->valuePointer = indexPointerNode->valuePointer + 1;
 			}
-			return reinterpret_cast<T*>(indexPointerNode);
+
+			T* getValue = reinterpret_cast<T*>(indexPointerNode);
+			if (std::is_class<T>::value)
+			{
+				return new(getValue) T;
+			}
+			return getValue;
 		}
 
 		void deallocate(T* backPointer)

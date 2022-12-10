@@ -4,6 +4,8 @@
 #include <iostream>
 #include <ctime>
 #include <memory>
+#include <vector>
+#include <thread>
 #include "MemoryPool.h"
 
 using namespace std;
