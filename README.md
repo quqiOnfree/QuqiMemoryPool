@@ -1,7 +1,7 @@
 ## 内存池MemoryPool
 
 #模板类型为class时 使用格式如下
-`
+```
 	struct hi
 	{
 		hi() {}
@@ -16,10 +16,10 @@
 	qw->~hi();
 	//归还内存
 	sd2.deallocate(qw);
-`
+```
 
 #不同内存池之间的性能
-`
+```
   size_t times = 100000000;
 	size_t* a;
 
@@ -55,4 +55,4 @@
 		stdAllocator.deallocate(a, 1);
 	}
 	cout << static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times << '\n';
-`
+```
