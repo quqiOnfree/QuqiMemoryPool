@@ -279,7 +279,7 @@ namespace qmem
 			{
 				localElementNode = p_startElementNode;
 				p_startElementNode = p_startElementNode->next;
-				delete reinterpret_cast<char*>(localElementNode);
+				delete[] reinterpret_cast<char*>(localElementNode);
 			}
 		}
 
@@ -364,10 +364,12 @@ namespace qmem
 			}
 			else
 			{
+				ElementNode* localElementPointer = p_startElementNode;
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
 				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
 				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode) + sizeof(T) * p_dataTypeCount);
+				p_startElementNode->next = localElementPointer;
 
 				p_startPointerNode = p_startElementNode->pointerNodePointer;
 				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
