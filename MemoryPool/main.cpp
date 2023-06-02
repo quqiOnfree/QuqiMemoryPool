@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 #include <thread>
-#include "MemoryPool.h"
+#include "MemoryPool.hpp"
 
 using namespace std;
 
@@ -47,7 +47,7 @@ int main()
 		{
 			sd.deallocate(a[i]);
 		}
-		cout << static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times << '\n';
+		cout << "SingleDataTypeMemoryPool：" << static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times << '\n';
 	}
 	
 	/*
@@ -84,7 +84,7 @@ int main()
 			stdAllocator.deallocate(a[i], 1);
 
 		}
-		cout << static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times << '\n';
+		cout << "allocator：" << static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times << '\n';
 	}
 	
 

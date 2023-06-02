@@ -1,8 +1,6 @@
 ﻿#pragma once
 
 #include <cstring>
-#include <type_traits>
-#include <typeinfo>
 
 namespace qmem
 {
@@ -246,8 +244,8 @@ namespace qmem
 		SingleDataTypeMemoryPool()
 			:SingleDataTypeMemoryPool(2048)
 		{
-
 		}
+
 		SingleDataTypeMemoryPool(size_t dataTypeCount)
 			:p_blockSize(sizeof(T) * dataTypeCount), p_dataTypeCount(dataTypeCount)
 		{
@@ -274,6 +272,8 @@ namespace qmem
 
 		~SingleDataTypeMemoryPool()
 		{
+			// 释放每个内存块
+
 			ElementNode* localElementNode = nullptr;
 			while (p_startElementNode != nullptr)
 			{
@@ -286,34 +286,37 @@ namespace qmem
 		SingleDataTypeMemoryPool& operator=(const SingleDataTypeMemoryPool&) = delete;
 		SingleDataTypeMemoryPool& operator=(SingleDataTypeMemoryPool&& sdtm) noexcept
 		{
-			if (this != &sdtm)
-			{
-				this->~SingleDataTypeMemoryPool();
+			if (this == &sdtm)
+				return *this;
 
-				p_blockSize = sdtm.p_blockSize;
-				p_dataTypeCount = sdtm.p_dataTypeCount;
+			this->~SingleDataTypeMemoryPool();
 
-				p_startElementNode = sdtm.p_startElementNode;
-				sdtm.p_startElementNode = nullptr;
+			p_blockSize = sdtm.p_blockSize;
+			p_dataTypeCount = sdtm.p_dataTypeCount;
 
-				p_startPointerNode = sdtm.p_startPointerNode;
-				sdtm.p_startPointerNode = nullptr;
-				p_indexPointerNode = sdtm.p_indexPointerNode;
-				sdtm.p_indexPointerNode = nullptr;
-				p_endPointerNode = sdtm.p_endPointerNode;
-				sdtm.p_endPointerNode = nullptr;
-				p_freePointerNode = sdtm.p_freePointerNode;
-				sdtm.p_freePointerNode = nullptr;
-			}
+			p_startElementNode = sdtm.p_startElementNode;
+			sdtm.p_startElementNode = nullptr;
+
+			p_startPointerNode = sdtm.p_startPointerNode;
+			sdtm.p_startPointerNode = nullptr;
+			p_indexPointerNode = sdtm.p_indexPointerNode;
+			sdtm.p_indexPointerNode = nullptr;
+			p_endPointerNode = sdtm.p_endPointerNode;
+			sdtm.p_endPointerNode = nullptr;
+			p_freePointerNode = sdtm.p_freePointerNode;
+			sdtm.p_freePointerNode = nullptr;
 			
 			return *this;
 		}
 
-		//不允许申请数组
+		// 申请内存
+		// 不允许申请数组
 		T* allocate()
 		{
 			if (p_freePointerNode != nullptr)
 			{
+				//释放指针链表不为空，可以重复利用
+
 				PointerNode* indexPointerNode = p_freePointerNode;
 				p_freePointerNode = p_freePointerNode->next;
 				indexPointerNode->next = nullptr;
@@ -322,16 +325,25 @@ namespace qmem
 
 			if (p_indexPointerNode >= p_endPointerNode)
 			{
+				// 如果PointNode到了末尾
+				// 意味着内存中所有的元素已经分配完成
+				// 就是要申请新的内存块了
 				allocateBlock();
 			}
 
+			// PointNode没有到末尾
+			// 获取未使用的PointerNode
+			
+			// 新的的PointerNode
 			PointerNode* indexPointerNode = p_indexPointerNode++;
 			if (p_indexPointerNode != p_endPointerNode)
 			{
 				p_indexPointerNode->valuePointer = indexPointerNode->valuePointer + 1;
 			}
 
+			//PointerNode*转成元素指针
 			T* getValue = reinterpret_cast<T*>(indexPointerNode);
+			// 如果是类或结构体，调用构造函数
 			if (std::is_class<T>::value)
 			{
 				return new(getValue) T;
@@ -339,24 +351,35 @@ namespace qmem
 			return getValue;
 		}
 
+		// 释放内存
 		void deallocate(T* backPointer)
 		{
+			// 如果为 nullptr
 			if (backPointer == nullptr) return;
+
+			//存到释放链表中
 			PointerNode* index = reinterpret_cast<PointerNode*>(backPointer);
 			index->next = p_freePointerNode;
 			p_freePointerNode = index;
 		}
 
 	protected:
+		// 申请内存块
 		void allocateBlock()
 		{
 			if (p_startElementNode == nullptr)
 			{
+				// 如果一个内存块都没申请
+
+				// 申请新的内存块（包括内存池的内存、元素结构体指针的内存）
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
+
+				//更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
 				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
 				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode) + sizeof(T) * p_dataTypeCount);
 
+				// 更新元素结构体链表起始位置
 				p_startPointerNode = p_startElementNode->pointerNodePointer;
 				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
 				p_indexPointerNode = p_startPointerNode;
@@ -364,13 +387,19 @@ namespace qmem
 			}
 			else
 			{
+				// 如果已经有内存块
+
 				ElementNode* localElementPointer = p_startElementNode;
+				// 申请新的内存块（包括内存池的内存、元素结构体指针的内存）
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
+
+				// 更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
 				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
 				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode) + sizeof(T) * p_dataTypeCount);
 				p_startElementNode->next = localElementPointer;
 
+				// 更新元素结构体链表起始位置
 				p_startPointerNode = p_startElementNode->pointerNodePointer;
 				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
 				p_indexPointerNode = p_startPointerNode;
@@ -380,25 +409,41 @@ namespace qmem
 
 		struct PointerNode;
 
+		// 内存池指针
 		struct ElementNode
 		{
+			// 内存池指针
 			T* elementPointer = nullptr;
+			// 这个内存池中对于的各个元素的指针
 			PointerNode* pointerNodePointer = nullptr;
+			// 链表的下一个指针
 			ElementNode* next = nullptr;
 		};
+
+		// 内存池中各个元素的指针
 		struct PointerNode
 		{
+			// 元素指针
 			T* valuePointer;
+			// 链表的下一个指针
 			PointerNode* next = nullptr;
 		};
 	private:
-		size_t p_blockSize, p_dataTypeCount;
+		// 内存块大小
+		size_t p_blockSize;
+		// 一个内存块能存的元素数量
+		size_t p_dataTypeCount;
 
+		//内存块链表起始位置
 		ElementNode* p_startElementNode = nullptr;
 
+		// 总的元素结构体指针起始位置
 		PointerNode* p_startPointerNode = nullptr;
+		// 当前未分配的元素结构体指针
 		PointerNode* p_indexPointerNode = nullptr;
+		// 总的元素结构体指针终止位置
 		PointerNode* p_endPointerNode = nullptr;
+		// 元素结构体指针回收链表
 		PointerNode* p_freePointerNode = nullptr;
 	};
 
