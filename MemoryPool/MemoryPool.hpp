@@ -311,7 +311,8 @@ namespace qmem
 
 		// 申请内存
 		// 不允许申请数组
-		T* allocate()
+		template<typename... Args>
+		T* allocate(Args&&... args)
 		{
 			if (p_freePointerNode != nullptr)
 			{
@@ -336,17 +337,12 @@ namespace qmem
 			
 			// 新的的PointerNode
 			PointerNode* indexPointerNode = p_indexPointerNode++;
-			if (p_indexPointerNode != p_endPointerNode)
-			{
-				p_indexPointerNode->valuePointer = indexPointerNode->valuePointer + 1;
-			}
 
 			//PointerNode*转成元素指针
 			T* getValue = reinterpret_cast<T*>(indexPointerNode);
-			// 如果是类或结构体，调用构造函数
 			if (std::is_class<T>::value)
 			{
-				return new(getValue) T;
+				new(getValue) T(std::forward<Args>(args)...);
 			}
 			return getValue;
 		}
@@ -356,6 +352,11 @@ namespace qmem
 		{
 			// 如果为 nullptr
 			if (backPointer == nullptr) return;
+
+			if (std::is_class<T>::value)
+			{
+				backPointer->~T();
+			}
 
 			//存到释放链表中
 			PointerNode* index = reinterpret_cast<PointerNode*>(backPointer);
@@ -372,16 +373,14 @@ namespace qmem
 				// 如果一个内存块都没申请
 
 				// 申请新的内存块（包括内存池的内存、元素结构体指针的内存）
-				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
+				char* localPointer = new char[sizeof(ElementNode) + sizeof(PointerNode) * p_dataTypeCount] {0};
 
 				//更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
-				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
-				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode) + sizeof(T) * p_dataTypeCount);
+				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode));
 
 				// 更新元素结构体链表起始位置
 				p_startPointerNode = p_startElementNode->pointerNodePointer;
-				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
 				p_indexPointerNode = p_startPointerNode;
 				p_endPointerNode = p_startPointerNode + p_dataTypeCount;
 			}
@@ -391,17 +390,15 @@ namespace qmem
 
 				ElementNode* localElementPointer = p_startElementNode;
 				// 申请新的内存块（包括内存池的内存、元素结构体指针的内存）
-				char* localPointer = new char[sizeof(ElementNode) + sizeof(T) * p_dataTypeCount + sizeof(PointerNode) * p_dataTypeCount] {0};
+				char* localPointer = new char[sizeof(ElementNode) + sizeof(PointerNode) * p_dataTypeCount] {0};
 
 				// 更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
-				p_startElementNode->elementPointer = reinterpret_cast<T*>(localPointer + sizeof(ElementNode));
-				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode) + sizeof(T) * p_dataTypeCount);
+				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode));
 				p_startElementNode->next = localElementPointer;
 
 				// 更新元素结构体链表起始位置
 				p_startPointerNode = p_startElementNode->pointerNodePointer;
-				p_startPointerNode->valuePointer = p_startElementNode->elementPointer;
 				p_indexPointerNode = p_startPointerNode;
 				p_endPointerNode = p_startPointerNode + p_dataTypeCount;
 			}
@@ -412,8 +409,6 @@ namespace qmem
 		// 内存池指针
 		struct ElementNode
 		{
-			// 内存池指针
-			T* elementPointer = nullptr;
 			// 这个内存池中对于的各个元素的指针
 			PointerNode* pointerNodePointer = nullptr;
 			// 链表的下一个指针
@@ -424,7 +419,7 @@ namespace qmem
 		struct PointerNode
 		{
 			// 元素指针
-			T* valuePointer;
+			T valuePointer;
 			// 链表的下一个指针
 			PointerNode* next = nullptr;
 		};
