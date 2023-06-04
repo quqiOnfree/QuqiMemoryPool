@@ -20,43 +20,97 @@ size_t* a[times];
 
 int main()
 {
-	long double sdtm = 0, sa = 0;
-
 	{
-		//允许单个类型获取内存的内存池，不允许生成数组
+		//安全测试
+
 		qmem::SingleDataTypeMemoryPool<size_t> sd;
-		clock_t start = clock();
-		for (size_t i = 0; i < times; ++i)
+		for (size_t i = 0; i < 4096; i++)
 		{
 			a[i] = sd.allocate();
+			*a[i] = i;
 		}
-		for (size_t i = 0; i < times; ++i)
+		bool correct = true;
+		for (size_t i = 0; i < 4096; i++)
+		{
+			cout << *a[i] << ' ';
+			if (*a[i] != i)
+			{
+				correct = false;
+				break;
+			}
+		}
+		cout << '\n';
+		if (correct)
+		{
+			cout << "数据无误\n";
+		}
+		else
+		{
+			cout << "数据有误\n";
+		}
+		for (size_t i = 0; i < 4096; i++)
 		{
 			sd.deallocate(a[i]);
 		}
-		long double end = static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times;
-		sdtm = end;
-		cout << "SingleDataTypeMemoryPool：" << end << '\n';
 	}
 
 	{
-		//标准库内存池
-		allocator<size_t> stdAllocator;
-		clock_t start = clock();
-		for (size_t i = 0; i < times; ++i)
-		{
-			a[i] = stdAllocator.allocate(1);
-		}
-		for (size_t i = 0; i < times; ++i)
-		{
-			stdAllocator.deallocate(a[i], 1);
-		}
-		long double end = static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times;
-		sa = end;
-		cout << "allocator：" << end << '\n';
-	}
+		//性能测试
 
-	cout << "自制内存池快于标准库内存池" << sa / sdtm << "倍\n";
+		long double sdtm = 0, sa = 0;
+
+		for (size_t i = 0; i < 5; i++)
+		{
+			//允许单个类型获取内存的内存池，不允许生成数组
+			qmem::SingleDataTypeMemoryPool<size_t> sd;
+			clock_t start = clock();
+			for (size_t i = 0; i < times; ++i)
+			{
+				a[i] = sd.allocate();
+			}
+			for (size_t i = 0; i < times; ++i)
+			{
+				sd.deallocate(a[i]);
+			}
+			long double end = static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times;
+			if (i == 0)
+			{
+				sdtm = end;
+			}
+			else
+			{
+				sdtm = (end + sdtm) / 2;
+			}
+			cout <<"times: "<< i << " SingleDataTypeMemoryPool: " << end << '\n';
+		}
+
+		for (size_t i = 0; i < 5; i++)
+		{
+			//标准库内存池
+			allocator<size_t> stdAllocator;
+			clock_t start = clock();
+			for (size_t i = 0; i < times; ++i)
+			{
+				a[i] = stdAllocator.allocate(1);
+			}
+			for (size_t i = 0; i < times; ++i)
+			{
+				stdAllocator.deallocate(a[i], 1);
+			}
+			long double end = static_cast<long double>(clock() - start) / CLOCKS_PER_SEC / times;
+			if (i == 0)
+			{
+				sa = end;
+			}
+			else
+			{
+				sa = (end + sa) / 2;
+			}
+			cout << "times: " << i << " allocator: " << end << '\n';
+		}
+
+		cout << "自制内存池快于标准库内存池" << sa / sdtm << "倍\n";
+	}
 
 	return 0;
 }
