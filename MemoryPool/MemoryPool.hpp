@@ -247,14 +247,13 @@ namespace qmem
 		}
 
 		SingleDataTypeMemoryPool(size_t dataTypeCount)
-			:p_blockSize(sizeof(T) * dataTypeCount), p_dataTypeCount(dataTypeCount)
+			:p_dataTypeCount(dataTypeCount)
 		{
 		}
 
 		SingleDataTypeMemoryPool(const SingleDataTypeMemoryPool&) = delete;
 		SingleDataTypeMemoryPool(SingleDataTypeMemoryPool&& sdtm) noexcept
 		{
-			p_blockSize = sdtm.p_blockSize;
 			p_dataTypeCount = sdtm.p_dataTypeCount;
 
 			p_startElementNode = sdtm.p_startElementNode;
@@ -291,7 +290,6 @@ namespace qmem
 
 			this->~SingleDataTypeMemoryPool();
 
-			p_blockSize = sdtm.p_blockSize;
 			p_dataTypeCount = sdtm.p_dataTypeCount;
 
 			p_startElementNode = sdtm.p_startElementNode;
@@ -389,6 +387,8 @@ namespace qmem
 				// 如果已经有内存块
 
 				ElementNode* localElementPointer = p_startElementNode;
+				//扩容
+				p_dataTypeCount *= 2;
 				// 申请新的内存块（包括内存池的内存、元素结构体指针的内存）
 				char* localPointer = new char[sizeof(ElementNode) + sizeof(PointerNode) * p_dataTypeCount] {0};
 
@@ -424,8 +424,6 @@ namespace qmem
 			PointerNode* next = nullptr;
 		};
 	private:
-		// 内存块大小
-		size_t p_blockSize;
 		// 一个内存块能存的元素数量
 		size_t p_dataTypeCount;
 
