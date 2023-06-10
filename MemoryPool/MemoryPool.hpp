@@ -269,6 +269,18 @@ namespace qmem
 			sdtm.p_freePointerNode = nullptr;
 		}
 
+		SingleDataTypeMemoryPool(SingleDataTypeMemoryPool& sdtm) noexcept
+		{
+			p_dataTypeCount = sdtm.p_dataTypeCount;
+
+			p_startElementNode = sdtm.p_startElementNode;
+
+			p_startPointerNode = sdtm.p_startPointerNode;
+			p_indexPointerNode = sdtm.p_indexPointerNode;
+			p_endPointerNode = sdtm.p_endPointerNode;
+			p_freePointerNode = sdtm.p_freePointerNode;
+		}
+
 		~SingleDataTypeMemoryPool()
 		{
 			// 释放每个内存块
@@ -307,10 +319,29 @@ namespace qmem
 			return *this;
 		}
 
+		SingleDataTypeMemoryPool& operator=(SingleDataTypeMemoryPool& sdtm) noexcept
+		{
+			if (this == &sdtm)
+				return *this;
+
+			this->~SingleDataTypeMemoryPool();
+
+			p_dataTypeCount = sdtm.p_dataTypeCount;
+
+			p_startElementNode = sdtm.p_startElementNode;
+
+			p_startPointerNode = sdtm.p_startPointerNode;
+			p_indexPointerNode = sdtm.p_indexPointerNode;
+			p_endPointerNode = sdtm.p_endPointerNode;
+			p_freePointerNode = sdtm.p_freePointerNode;
+
+			return *this;
+		}
+
 		// 申请内存
 		// 不允许申请数组
-		template<typename... Args>
-		T* allocate(Args&&... args)
+		//template<typename... Args>
+		T* allocate(size_t n = 1/*, Args&&... args*/)
 		{
 			if (p_freePointerNode != nullptr)
 			{
@@ -338,15 +369,15 @@ namespace qmem
 
 			//PointerNode*转成元素指针
 			T* getValue = reinterpret_cast<T*>(indexPointerNode);
-			if (std::is_class<T>::value)
+			/*if (std::is_class<T>::value)
 			{
 				new(getValue) T(std::forward<Args>(args)...);
-			}
+			}*/
 			return getValue;
 		}
 
 		// 释放内存
-		void deallocate(T* backPointer)
+		void deallocate(T* backPointer, size_t n = 1)
 		{
 			// 如果为 nullptr
 			if (backPointer == nullptr) return;
