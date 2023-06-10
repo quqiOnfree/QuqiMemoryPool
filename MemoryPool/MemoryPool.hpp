@@ -240,6 +240,14 @@ namespace qmem
 	class SingleDataTypeMemoryPool
 	{
 	public:
+		//内存释放检查模式
+		enum class CheckMode
+		{
+			//内存释放检查
+			Check,
+			//内存释放不检查
+			NoCheck
+		};
 
 		SingleDataTypeMemoryPool()
 			:SingleDataTypeMemoryPool(2048)
@@ -247,7 +255,7 @@ namespace qmem
 		}
 
 		SingleDataTypeMemoryPool(size_t dataTypeCount)
-			:p_dataTypeCount(dataTypeCount)
+			:p_dataTypeCount(dataTypeCount), p_checkMode(CheckMode::Check)
 		{
 		}
 
@@ -307,6 +315,12 @@ namespace qmem
 			return *this;
 		}
 
+		//设置内存释放检查模式
+		void setCheckMode(CheckMode cm)
+		{
+			p_checkMode = cm;
+		}
+
 		// 申请内存
 		// 不允许申请数组
 		template<typename... Args>
@@ -319,7 +333,13 @@ namespace qmem
 				PointerNode* indexPointerNode = p_freePointerNode;
 				p_freePointerNode = p_freePointerNode->next;
 				indexPointerNode->next = nullptr;
-				return reinterpret_cast<T*>(indexPointerNode);
+
+				T* getValue = reinterpret_cast<T*>(indexPointerNode);
+				if (std::is_class<T>::value)
+				{
+					new(getValue) T(std::forward<Args>(args)...);
+				}
+				return getValue;
 			}
 
 			if (p_indexPointerNode >= p_endPointerNode)
@@ -349,7 +369,23 @@ namespace qmem
 		void deallocate(T* backPointer)
 		{
 			// 如果为 nullptr
-			if (backPointer == nullptr) return;
+			if (backPointer == nullptr) throw std::runtime_error("this pointer isn't in the memory pool");
+
+			if (p_checkMode == CheckMode::Check)
+			{
+				bool hasFind = false;
+				ElementNode* localElement = p_startElementNode;
+				while (localElement != nullptr)
+				{
+					if (localElement->startMemoryBlock <= reinterpret_cast<char*>(backPointer) && reinterpret_cast<char*>(backPointer) < localElement->endMemoryBlock)
+					{
+						hasFind = true;
+						break;
+					}
+					localElement = localElement->next;
+				}
+				if (!hasFind) throw std::runtime_error("this pointer isn't in the memory pool");
+			}
 
 			if (std::is_class<T>::value)
 			{
@@ -375,6 +411,8 @@ namespace qmem
 
 				//更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
+				p_startElementNode->startMemoryBlock = reinterpret_cast<char*>(localPointer + sizeof(ElementNode));
+				p_startElementNode->endMemoryBlock = reinterpret_cast<char*>(localPointer + sizeof(ElementNode) + sizeof(PointerNode) * p_dataTypeCount);
 				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode));
 
 				// 更新元素结构体链表起始位置
@@ -394,6 +432,8 @@ namespace qmem
 
 				// 更新内存池链表起始位置
 				p_startElementNode = reinterpret_cast<ElementNode*>(localPointer);
+				p_startElementNode->startMemoryBlock = reinterpret_cast<char*>(localPointer + sizeof(ElementNode));
+				p_startElementNode->endMemoryBlock = reinterpret_cast<char*>(localPointer + sizeof(ElementNode) + sizeof(PointerNode) * p_dataTypeCount);
 				p_startElementNode->pointerNodePointer = reinterpret_cast<PointerNode*>(localPointer + sizeof(ElementNode));
 				p_startElementNode->next = localElementPointer;
 
@@ -409,6 +449,10 @@ namespace qmem
 		// 内存池指针
 		struct ElementNode
 		{
+			//内存块起始位置
+			char* startMemoryBlock = nullptr;
+			//内存块结束位置
+			char* endMemoryBlock = nullptr;
 			// 这个内存池中对于的各个元素的指针
 			PointerNode* pointerNodePointer = nullptr;
 			// 链表的下一个指针
@@ -418,7 +462,7 @@ namespace qmem
 		// 内存池中各个元素的指针
 		struct PointerNode
 		{
-			// 元素指针
+			// 元素
 			T valuePointer;
 			// 链表的下一个指针
 			PointerNode* next = nullptr;
@@ -438,6 +482,9 @@ namespace qmem
 		PointerNode* p_endPointerNode = nullptr;
 		// 元素结构体指针回收链表
 		PointerNode* p_freePointerNode = nullptr;
+
+		//检查模式
+		CheckMode p_checkMode;
 	};
 
 }
